@@ -322,7 +322,7 @@ terraform apply tfplan
 ```
 
 State buckets must exist beforehand (versioning on). Both environments use
-`aslam-terraform-bucket` with prefixes `dev/three-tier-tfstate` and
+`bucket-tf-1234` with prefixes `dev/three-tier-tfstate` and
 `prod/three-tier-tfstate`. The bucket is set in each `backend.tf`, or pass
 `-backend-config="bucket=<name>"` at init.
 

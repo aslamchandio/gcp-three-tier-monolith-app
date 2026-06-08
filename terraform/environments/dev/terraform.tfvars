@@ -1,7 +1,7 @@
 # environments/dev/terraform.tfvars
 # Dev environment values. No secrets here (network layer only).
 
-project_id  = "terraform-project-883456" # <-- replace with your dev GCP project
+project_id  = "Project-1234" # <-- replace with your dev GCP project
 region      = "us-west1"
 environment = "dev"
 app_name    = "three-tier"

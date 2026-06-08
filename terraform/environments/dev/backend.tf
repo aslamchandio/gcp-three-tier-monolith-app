@@ -8,7 +8,7 @@
 
 terraform {
   backend "gcs" {
-    bucket = "aslam-terraform-bucket" # <-- replace with your GCS state bucket
+    bucket = "bucket-tf-1234" # <-- replace with your GCS state bucket
     prefix = "dev/three-tier-tfstate"
   }
 }

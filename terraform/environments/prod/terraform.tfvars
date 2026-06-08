@@ -2,7 +2,7 @@
 # Prod environment values. No secrets here (network layer only).
 # Non-overlapping CIDR vs dev so the environments can peer/coexist later.
 
-project_id  = "terraform-project-883456" # <-- replace with your prod GCP project
+project_id  = "Project-1234" # <-- replace with your prod GCP project
 region      = "us-central1"
 environment = "prod"
 app_name    = "three-tier"
