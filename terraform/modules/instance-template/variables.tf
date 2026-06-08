@@ -74,7 +74,7 @@ variable "network_tags" {
 }
 
 variable "startup_script" {
-  description = "Startup script contents (e.g. file(\"../../../app/deploy/startup.sh\"))."
+  description = "Startup script contents (e.g. file(\"../../../ecommerce-app/deploy/startup.sh\"))."
   type        = string
   default     = ""
 }

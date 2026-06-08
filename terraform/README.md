@@ -46,7 +46,7 @@ terraform/
 | `cloud-sql` | PostgreSQL instance, database, user, generated password in Secret Manager | **Private IP only** (`ipv4_enabled = false`), TLS enforced, backups, deletion protection |
 | `iam` | App service account + project roles | Least privilege: `logging.logWriter`, `monitoring.metricWriter`, `cloudsql.client`; rejects owner/editor |
 | `secret-manager` | Secrets + `secretAccessor` grants (incl. on existing secrets) | Values never hardcoded (sensitive); grants scoped per secret |
-| `instance-template` | Regional app instance template | No external IP, Shielded VM, runs as the app SA, startup script from `app/deploy/startup.sh` |
+| `instance-template` | Regional app instance template | No external IP, Shielded VM, runs as the app SA, startup script from `ecommerce-app/deploy/startup.sh` |
 | `health-check` | Regional HTTP health check on `:8080` | Path is a variable: MIG uses `/healthz` (liveness), the LB backend uses `/readyz` (readiness) |
 | `managed-instance-group` | Regional MIG + autoscaler | Named port 8080, autohealing, proactive rolling updates; CPU-driven autoscaler (min 2) with scale-in control |
 | `alb` | Regional external ALB | HTTP (+ optional HTTPS with HTTP→HTTPS redirect) via a **Google-managed cert** (Certificate Manager + DNS authorization) or a self-managed cert, backend logging, proxy-only subnet, **and a firewall rule allowing that proxy subnet → app port** |
@@ -100,7 +100,7 @@ dependency order:
    scope** is stricter than a project-wide role.
 3. **instance-template** — regional app template: **no external IP** (egress via
    Cloud NAT), Shielded VM, network tag matching the firewall, runs as the SA,
-   and uses `app/deploy/startup.sh` as the metadata `startup-script`. Non-secret
+   and uses `ecommerce-app/deploy/startup.sh` as the metadata `startup-script`. Non-secret
    config (DB private IP, names, port, the password **secret id**) is passed via
    instance metadata; the DB password is fetched from Secret Manager at boot.
 4. **health-check** — regional HTTP probes on `:8080`. Two are wired: the MIG
@@ -157,7 +157,7 @@ module "instance_template" {
   subnetwork            = var.subnet_self_link
   network_tags          = [var.app_network_tag]
   service_account_email = module.iam.service_account_email
-  startup_script        = file("../../../app/deploy/startup.sh")
+  startup_script        = file("../../../ecommerce-app/deploy/startup.sh")
   metadata = {
     environment           = var.environment
     app_port              = tostring(var.app_port)
@@ -377,8 +377,8 @@ State buckets must exist beforehand (versioning on). Both environments use
   #   SQL
   ```
 
-  > Status: **implemented** in `app/deploy/startup.sh` and
-  > `ecommerce-app/deploy/startup.sh` (psql advisory lock; `postgresql-client`
+  > Status: **implemented** in `ecommerce-app/deploy/startup.sh`
+  > (psql advisory lock; `postgresql-client`
   > added to the VM packages, `PGSSLMODE=require` for the ENCRYPTED_ONLY
   > instance). Rolls out on the next deploy — no `terraform apply` needed.
 

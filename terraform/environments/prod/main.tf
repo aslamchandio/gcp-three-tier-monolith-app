@@ -117,7 +117,7 @@ module "instance_template" {
   service_account_email = module.iam.service_account_email
 
   # Bootstrap the app from the repo's startup script.
-  startup_script = file("../../../app/deploy/startup.sh")
+  startup_script = file("../../../ecommerce-app/deploy/startup.sh")
 
   # Non-secret config via metadata; the DB password is fetched from Secret
   # Manager at boot (the SA was granted access above).
