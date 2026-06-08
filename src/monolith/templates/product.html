@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ product.title }}{% endblock %}
+{% block content %}
+<main class="page pdp-page">
+    <a href="/" class="back-link">← Back to shop</a>
+
+    <article class="pdp">
+        <div class="pdp-image">
+            <img src="{{ product.image }}" alt="{{ product.title }}">
+            {% if product.discount and product.discount > 0 %}
+            <span class="badge-discount badge-large">-{{ product.discount }}% OFF</span>
+            {% endif %}
+        </div>
+        <div class="pdp-info">
+            <span class="card-cat">{{ product.category }}</span>
+            <h1 class="pdp-title">{{ product.title }}</h1>
+            <div class="pdp-rating">
+                <span class="stars">★ <strong>{{ product.rating.rate }}</strong></span>
+                <span class="muted">({{ product.rating.count }} reviews)</span>
+            </div>
+            <p class="pdp-desc">{{ product.description }}</p>
+            <div class="pdp-price">
+                <span class="price-now">${{ '%.2f'|format(product.price) }}</span>
+            </div>
+            <form action="/cart/add" method="post" class="pdp-form">
+                <input type="hidden" name="productId" value="{{ product.id }}">
+                <div class="qty">
+                    <label>Quantity</label>
+                    <input type="number" name="quantity" value="1" min="1" max="10">
+                </div>
+                <button type="submit" class="btn-primary btn-block">Add to cart</button>
+            </form>
+
+            <div class="pdp-perks">
+                <div>🚚 Free express over $50</div>
+                <div>↩ 30-day returns</div>
+                <div>🔒 Secure checkout</div>
+            </div>
+        </div>
+    </article>
+</main>
+{% endblock %}

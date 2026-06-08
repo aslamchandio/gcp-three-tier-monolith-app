@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Nova Store · Curated Online Shopping{% endblock %}
+{% block content %}
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <span class="hero-eyebrow">
+                <span class="pulse-dot"></span> Spring Drop · Live now
+            </span>
+            <h1 class="hero-title">
+                Find the <span class="title-grad">extraordinary</span><br>in the everyday.
+            </h1>
+            <p class="hero-sub">
+                Hand-picked products, refreshed daily. Up to <strong>40% off</strong> selected lines —
+                free express shipping on orders over $50.
+            </p>
+            <div class="hero-cta">
+                <a href="#products" class="btn-primary">Shop the drop →</a>
+                <a href="#categories" class="btn-outline">Browse categories</a>
+            </div>
+            <div class="hero-trust">
+                <div><strong>10K+</strong><span>Happy customers</span></div>
+                <div><strong>4.9★</strong><span>Avg rating</span></div>
+                <div><strong>24h</strong><span>Express delivery</span></div>
+            </div>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+            <div class="hero-card hero-card-1"><div class="hc-tag">-40%</div><div class="hc-orb"></div></div>
+            <div class="hero-card hero-card-2"><div class="hc-stars">★★★★★</div><div class="hc-orb"></div></div>
+            <div class="hero-card hero-card-3"><div class="hc-cart">🛒</div></div>
+            <div class="hero-glow"></div>
+        </div>
+    </section>
+
+    <div class="marquee" aria-hidden="true">
+        <div class="marquee-track">
+            <span>✦ FREE EXPRESS OVER $50</span><span>✦</span>
+            <span>NEW DROPS EVERY WEEK</span><span>✦</span>
+            <span>30-DAY RETURNS</span><span>✦</span>
+            <span>SECURE CHECKOUT</span><span>✦</span>
+            <span>FREE EXPRESS OVER $50</span><span>✦</span>
+            <span>NEW DROPS EVERY WEEK</span><span>✦</span>
+            <span>30-DAY RETURNS</span><span>✦</span>
+            <span>SECURE CHECKOUT</span><span>✦</span>
+        </div>
+    </div>
+
+    <section class="filters" id="categories">
+        <div class="filters-head">
+            <h2 class="section-title">Shop by category</h2>
+            <p class="section-sub">Skip the scroll — jump straight to what you came for.</p>
+        </div>
+        <div class="chip-row">
+            <a href="/" class="chip {{ 'is-active' if not active_category else '' }}">All</a>
+            {% for c in categories %}
+            <a href="/?category={{ c }}" class="chip {{ 'is-active' if active_category == c else '' }}">{{ c }}</a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="products" id="products">
+        <div class="products-head">
+            <div>
+                <h2 class="section-title" id="featured">Featured products</h2>
+                <p class="section-sub">
+                    <strong class="result-count">{{ products|length }}</strong> items
+                    {% if active_category %}in <em>{{ active_category }}</em>{% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="grid">
+            {% for p in products %}
+            <article class="card" data-title="{{ p.title }}" data-category="{{ p.category }}"
+                     style="animation-delay:{{ loop.index0 * 50 }}ms">
+                <a href="/product/{{ p.id }}" class="card-link">
+                    <div class="card-media">
+                        <img src="{{ p.image }}" alt="{{ p.title }}" loading="lazy">
+                        {% if p.discount and p.discount > 0 %}
+                        <span class="badge-discount">-{{ p.discount }}%</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <span class="card-cat">{{ p.category }}</span>
+                        <h3 class="card-title">{{ p.title }}</h3>
+                        <div class="card-meta">
+                            <span class="card-rating">★ <strong>{{ p.rating.rate }}</strong></span>
+                            <span class="price">${{ '%.2f'|format(p.price) }}</span>
+                        </div>
+                        <span class="card-cta">Quick view →</span>
+                    </div>
+                </a>
+            </article>
+            {% endfor %}
+        </div>
+
+        <div id="no-results" class="empty-state hidden">
+            <div class="empty-illustration">🔍</div>
+            <h3>No products match your search</h3>
+            <p>Try a different keyword or clear the filter.</p>
+        </div>
+    </section>
+</main>
+{% endblock %}

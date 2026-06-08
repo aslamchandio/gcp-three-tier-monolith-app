@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Your Cart · Nova Store{% endblock %}
+{% block content %}
+<main class="page">
+    <h1 class="page-title">Your cart</h1>
+
+    {% if not cart.items %}
+    <div class="empty-state">
+        <div class="empty-illustration">🛒</div>
+        <h2>Your cart is empty</h2>
+        <p>Looks like you haven't added anything yet.</p>
+        <a href="/" class="btn-primary">Start shopping</a>
+    </div>
+    {% else %}
+    <div class="cart-layout">
+        <ul class="cart-items glass">
+            {% for i in cart.items %}
+            <li class="cart-item">
+                <img src="{{ i.image }}" alt="{{ i.title }}">
+                <div class="cart-item-info">
+                    <h3>{{ i.title }}</h3>
+                    <p class="muted">Qty: <span>{{ i.quantity }}</span></p>
+                </div>
+                <div class="cart-item-price">${{ '%.2f'|format(i.line_total) }}</div>
+                <form action="/cart/remove" method="post">
+                    <input type="hidden" name="productId" value="{{ i.product_id }}">
+                    <button class="btn-ghost" type="submit" aria-label="Remove">✕</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <aside class="cart-summary glass">
+            <h2>Order summary</h2>
+            <div class="row"><span>Subtotal</span><span>${{ '%.2f'|format(cart.total) }}</span></div>
+            <div class="row"><span>Shipping</span><span class="success">FREE</span></div>
+            <hr>
+            <div class="row total"><span>Total</span><span>${{ '%.2f'|format(cart.total) }}</span></div>
+            <a href="/checkout" class="btn-primary btn-block">Proceed to checkout →</a>
+        </aside>
+    </div>
+    {% endif %}
+</main>
+{% endblock %}

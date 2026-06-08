@@ -1,0 +1,14 @@
+# Runtime dependencies (pinned floors) for VM / systemd installs.
+# `pip install -e .` (using pyproject.toml) is preferred; this file mirrors it
+# for the startup script which installs without a build step.
+fastapi>=0.115
+uvicorn[standard]>=0.34
+sqlalchemy[asyncio]>=2.0.36
+asyncpg>=0.30
+alembic>=1.14
+pydantic>=2.10
+pydantic-settings>=2.7
+python-dotenv>=1.0
+jinja2>=3.1
+httpx>=0.28
+python-multipart>=0.0.18

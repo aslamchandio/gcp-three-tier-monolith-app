@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gcp-ecommerce-monolith"
+version = "1.0.0"
+description = "Nova Store — a layered FastAPI monolith (catalog + cart + checkout + orders + storefront) folded from a microservices app, for GCP (ALB -> MIG -> Compute Engine -> Cloud SQL PostgreSQL)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "python-dotenv>=1.0",
+    "jinja2>=3.1",
+    "httpx>=0.28",
+    "python-multipart>=0.0.18",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.9",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Ship the Jinja2 templates and static assets inside the installed package so a
+# plain `pip install -e .` on the VM makes them importable next to the code.
+[tool.setuptools.package-data]
+monolith = ["templates/*.html", "static/css/*.css", "static/js/*.js"]
+
+[tool.ruff]
+line-length = 120
+src = ["src"]
+target-version = "py311"
+# Alembic generates these revision files from its own template; don't lint
+# tool-generated code (it uses legacy typing the UP rules would rewrite).
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]

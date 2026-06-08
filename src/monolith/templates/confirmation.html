@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Order Confirmed · Nova Store{% endblock %}
+{% block content %}
+<main class="page">
+    <div class="confirm-card glass">
+        {% if not result.get('error') %}
+        <div>
+            <div class="check-anim">✓</div>
+            <h1>Order placed!</h1>
+            <p>Thanks for shopping with Nova. Your order ID is <strong>{{ result['orderId'] }}</strong>.</p>
+            <p class="muted">Total charged: <strong>${{ result['total'] }}</strong></p>
+            <a href="/" class="btn-primary">Continue shopping</a>
+        </div>
+        {% else %}
+        <div>
+            <div class="check-anim error">!</div>
+            <h1>Something went wrong</h1>
+            <p>{{ result['error'] }}</p>
+            <a href="/cart" class="btn-primary">Back to cart</a>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

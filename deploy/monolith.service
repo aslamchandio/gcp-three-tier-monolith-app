@@ -1,0 +1,35 @@
+# systemd unit for the monolith.
+# Installed by the startup script at /etc/systemd/system/monolith.service.
+# Restarts on crash and starts on boot, so any MIG VM self-heals the process.
+
+[Unit]
+Description=GCP Three-Tier Monolith (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=appuser
+Group=appuser
+WorkingDirectory=/opt/monolith/app
+
+# All configuration comes from this env file (written by the startup script).
+# DB_PASSWORD is sourced from Secret Manager; the file is root-owned, mode 0640.
+EnvironmentFile=/etc/monolith.env
+
+ExecStart=/opt/monolith/venv/bin/uvicorn monolith.main:app --host 0.0.0.0 --port ${PORT}
+
+# Graceful shutdown: send SIGTERM and allow in-flight requests to drain.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=always
+RestartSec=2
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
