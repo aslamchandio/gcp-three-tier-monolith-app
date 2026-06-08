@@ -28,6 +28,25 @@ htmlcov/
 .env.*
 !.env.example
 
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfplan
+tfplan
+*.tfvars.local
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# keep .terraform.lock.hcl committed (pinned provider hashes)
+# keep terraform.tfvars committed (env values; no secrets — DB password is in Secret Manager)
+apply-*.log
+
 # --- Editors / OS ---
 .idea/
 .vscode/

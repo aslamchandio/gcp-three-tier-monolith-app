@@ -1,0 +1,134 @@
+name: Deploy
+
+# Keyless deploy: publish the app artifact to GCS and roll the MIG.
+# Auth is via Workload Identity Federation (no JSON keys) — the workflow
+# impersonates the per-environment CI service account.
+#
+# Triggers:
+#   - push to main  -> automatic deploy to DEV (app = ecommerce-app).
+#   - workflow_dispatch -> manual deploy; pick the environment (incl. prod)
+#     and the app. Prod promotion is manual on purpose; prod is also gated by
+#     the prod GitHub Environment's protection rules (required reviewers) and
+#     its WIF binding only trusts refs/heads/main.
+#
+# Per-environment config (Settings -> Environments -> <env>):
+#   Secrets:
+#     WIF_PROVIDER     terraform output github_actions_wif_provider
+#     DEPLOY_SA        terraform output github_actions_deploy_sa
+#   Variables:
+#     GCP_PROJECT_ID   the project that hosts the env
+#     GCP_REGION       region of the env's MIG (dev=us-west1, prod=us-central1)
+#     APP_NAME         (optional) naming prefix; defaults to "three-tier"
+#     APP_URL          (optional) external base URL for the post-deploy smoke
+#                      test, e.g. https://dev.nativeops.site — step is skipped
+#                      when unset
+
+on:
+  push:
+    branches: [main]
+    # Only redeploy when something that affects the running app changes.
+    paths:
+      - "ecommerce-app/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+      app_dir:
+        description: App to deploy
+        type: choice
+        options: [ecommerce-app]
+        default: ecommerce-app
+
+permissions:
+  contents: read
+  id-token: write # required to mint the GitHub OIDC token for WIF
+
+# Never run two deploys at the same env concurrently. On push (no inputs) the
+# target is dev, so the group resolves to deploy-dev.
+concurrency:
+  group: deploy-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.app_dir || 'ecommerce-app' }} to ${{ inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    # Binds to the GitHub Environment for its scoped secrets/variables +
+    # protection rules. On push this is dev; prod is only reachable via a
+    # manual dispatch, where it then waits for the env's required reviewers.
+    environment: ${{ inputs.environment || 'dev' }}
+    env:
+      # Fall back to the auto-deploy defaults when triggered by push (no inputs).
+      APP_NAME: ${{ vars.APP_NAME || 'three-tier' }}
+      TARGET_ENV: ${{ inputs.environment || 'dev' }}
+      APP_DIR: ${{ inputs.app_dir || 'ecommerce-app' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Resolve target names (from the naming convention)
+        id: names
+        run: |
+          echo "bucket=${{ vars.GCP_PROJECT_ID }}-${APP_NAME}-${TARGET_ENV}-artifacts" >> "$GITHUB_OUTPUT"
+          echo "mig=${APP_NAME}-${TARGET_ENV}-mig" >> "$GITHUB_OUTPUT"
+
+      - name: Publish artifact (versioned release + current pointer)
+        env:
+          BUCKET: ${{ steps.names.outputs.bucket }}
+        run: |
+          # Exclude local-only cruft so the VM gets a clean, importable tree.
+          EXCLUDE='(^|/)(\.venv|\.git|__pycache__|\.pytest_cache|\.ruff_cache|\.env|[^/]*\.egg-info)(/|$)'
+          gsutil -m rsync -r    -x "$EXCLUDE" "$APP_DIR" "gs://$BUCKET/releases/${{ github.sha }}"
+          gsutil -m rsync -r -d -x "$EXCLUDE" "$APP_DIR" "gs://$BUCKET/current"
+
+      - name: Roll the MIG (zero-downtime)
+        env:
+          MIG: ${{ steps.names.outputs.mig }}
+        run: |
+          # Regional MIG: surge new instances first (max-unavailable=0) so the
+          # group never drops below capacity while VMs re-pull current/.
+          gcloud compute instance-groups managed rolling-action replace "$MIG" \
+            --region="${{ vars.GCP_REGION }}" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --max-surge=3 --max-unavailable=0 --replacement-method=substitute
+
+      - name: Wait for the group to stabilize
+        env:
+          MIG: ${{ steps.names.outputs.mig }}
+        run: |
+          gcloud compute instance-groups managed wait-until "$MIG" \
+            --stable \
+            --region="${{ vars.GCP_REGION }}" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --timeout=900
+
+      - name: Smoke test the deployed app
+        # MIG "stable" only means the VMs exist — this verifies the app actually
+        # serves through the load balancer. Set APP_URL on the GitHub Environment
+        # to enable it (e.g. https://dev.nativeops.site); skipped when unset.
+        if: vars.APP_URL != ''
+        run: |
+          url="${{ vars.APP_URL }}/readyz"
+          for i in $(seq 1 12); do
+            if curl -fsS --max-time 10 "$url" | grep -q '"status":"ready"'; then
+              echo "smoke test OK: $url"
+              exit 0
+            fi
+            echo "attempt $i: $url not ready yet, retrying in 10s..."
+            sleep 10
+          done
+          echo "smoke test FAILED: $url never reported ready"
+          exit 1

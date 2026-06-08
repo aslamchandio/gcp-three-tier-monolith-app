@@ -1,0 +1,100 @@
+name: CI
+
+# Pull-request gate: lint + test both apps and validate Terraform.
+# Requires no cloud credentials, so it runs safely on PRs (including forks).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Cancel superseded runs for the same PR/branch (a new push obsoletes the old
+# run). Pushes to main are left to finish so every mainline commit is verified.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  app:
+    name: App lint & test (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [ecommerce-app]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ${{ matrix.app }}/pyproject.toml
+
+      - name: Install (with dev extras)
+        run: pip install -e ".[dev]"
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Pytest
+        run: |
+          if [ -d tests ]; then
+            pytest -q
+          else
+            echo "No tests/ directory for ${{ matrix.app }} — skipping."
+          fi
+
+  terraform-fmt:
+    name: Terraform fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - name: Format check
+        run: terraform fmt -check -recursive
+        working-directory: terraform
+
+  terraform-validate:
+    name: Terraform validate (${{ matrix.env }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      # -backend=false: validate config/types without touching remote state
+      # or needing cloud credentials.
+      - name: Init (no backend) & validate
+        working-directory: terraform/environments/${{ matrix.env }}
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+  terraform-security:
+    name: Terraform security scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Trivy
+        # Install the CLI directly (the official script) instead of the
+        # composite action — avoids the nested setup-trivy tag-resolution
+        # breakage and keeps the scan transparent.
+        run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      - name: Trivy IaC misconfiguration scan
+        # Report-only (--exit-code 0): surfaces HIGH/CRITICAL misconfigurations in
+        # the log without failing the gate. Raise to --exit-code 1 to enforce
+        # once the current report is triaged.
+        run: trivy config --severity HIGH,CRITICAL --exit-code 0 terraform
